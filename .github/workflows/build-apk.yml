@@ -2,6 +2,7 @@ name: Build debug APK
 
 on:
   push:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -10,25 +11,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
 
-      - uses: android-actions/setup-android@v3
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.9
-
-      - name: Build debug APK
+      - name: Accept Android SDK Licenses
         run: |
-          SETTINGS=$(find . -name settings.gradle.kts -not -path "*/build/*" | head -n1)
-          if [ -z "$SETTINGS" ]; then echo "Khong tim thay settings.gradle.kts"; exit 1; fi
-          cd "$(dirname "$SETTINGS")"
-          gradle :app:assembleDebug --stacktrace
+          yes | sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - uses: actions/upload-artifact@v4
+      - name: Find and Build with Gradle
+        run: |
+          GRADLEW_FILE=$(find . -name "gradlew" -type f -print -quit)
+          if [ -n "$GRADLEW_FILE" ]; then
+            DIR_NAME=$(dirname "$GRADLEW_FILE")
+            echo "Đã tìm thấy gradlew tại thư mục: $DIR_NAME"
+            cd "$DIR_NAME"
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace
+          else
+            echo "Không tìm thấy file gradlew trong mã nguồn!"
+            exit 1
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: BilliardAim-debug-apk
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: '**/build/outputs/apk/debug/app-debug.apk'
+          
