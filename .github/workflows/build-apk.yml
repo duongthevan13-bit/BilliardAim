@@ -18,15 +18,24 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Find and Build with Gradle
+        run: |
+          # Tự động tìm file gradlew trong mọi thư mục con của dự án
+          GRADLEW_FILE=$(find . -name "gradlew" -type f -print -quit)
+          if [ -n "$GRADLEW_FILE" ]; then
+            DIR_NAME=$(dirname "$GRADLEW_FILE")
+            echo "Đã tìm thấy gradlew tại thư mục: $DIR_NAME"
+            cd "$DIR_NAME"
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace
+          else
+            echo "Không tìm thấy file gradlew trong mã nguồn!"
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BilliardAim-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: '**/build/outputs/apk/debug/app-debug.apk'
           
